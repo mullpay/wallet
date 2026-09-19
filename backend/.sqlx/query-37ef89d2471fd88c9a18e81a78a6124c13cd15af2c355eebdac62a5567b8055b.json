@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            id as \"id!: uuid::Uuid\",\n            public_key as \"public_key!: crypto::PublicKey\",\n            eulen_id,\n            created_at as \"created_at!: time::OffsetDateTime\",\n            updated_at as \"updated_at!: time::OffsetDateTime\"\n        FROM\n            account\n        WHERE\n            id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: uuid::Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "public_key!: crypto::PublicKey",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "eulen_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: time::OffsetDateTime",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: time::OffsetDateTime",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "37ef89d2471fd88c9a18e81a78a6124c13cd15af2c355eebdac62a5567b8055b"
+}

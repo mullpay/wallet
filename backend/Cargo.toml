@@ -1,0 +1,33 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "sqlite",
+    "uuid",
+    "time",
+] }
+axum = { version = "0.8.9", features = ["multipart"] }
+time = { version = "0.3.55", features = ["serde", "parsing"] }
+tower-http = { version = "0.7.1", features = ["cors"] }
+dotenvy = "0.15.7"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+reqwest = { version = "0.13.5", default-features = false, features = [
+    "json",
+    "rustls",
+] }
+simple_logger = "5.0.0"
+log = "0.4.34"
+regex = "1.11.1"
+rust_decimal = { version = "1.43.0", features = ["macros"] }
+uuid = { version = "1.26.1", features = ["serde", "v7"] }
+secp256k1 = { version = "0.33.1", features = ["serde"] }
+jsonwebtoken = "9.3.1"
+rand = { version = "0.10.2", features = ["sys_rng"] }
+sha2 = "0.11.0"
+hex = "0.4.3"

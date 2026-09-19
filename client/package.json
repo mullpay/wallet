@@ -1,0 +1,51 @@
+{
+	"name": "mullpay",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"lint": "prettier --check .",
+		"format": "prettier --write .",
+		"tauri": "tauri"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-static": "^3.0.10",
+		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@tailwindcss/vite": "^4.3.0",
+		"prettier": "^3.8.3",
+		"prettier-plugin-svelte": "^4.1.0",
+		"prettier-plugin-tailwindcss": "^0.8.0",
+		"svelte": "^5.56.1",
+		"svelte-check": "^4.6.0",
+		"tailwindcss": "^4.3.0",
+		"typescript": "^5.8.3",
+		"vite": "^8.0.16",
+		"@types/qrcode": "^1.5.6",
+		"@tauri-apps/cli": "^2"
+	},
+	"dependencies": {
+		"@noble/curves": "^2.2.0",
+		"@noble/hashes": "^2.2.0",
+		"@scure/bip32": "^1.7.0",
+		"@scure/bip39": "^2.2.0",
+		"light-bolt11-decoder": "^3.2.0",
+		"@buildonspark/spark-sdk": "^0.12.0",
+		"@flashnet/sdk": "0.5.10",
+		"@fortawesome/free-brands-svg-icons": "^7.3.1",
+		"@fortawesome/free-solid-svg-icons": "^7.3.1",
+		"svelte-fa": "^4.0.4",
+		"qrcode": "^1.5.4",
+		"@tauri-apps/api": "^2",
+		"@tauri-apps/plugin-opener": "^2"
+	},
+	"allowScripts": {
+		"protobufjs@7.6.6": true
+	}
+}

@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO account\n            (id, public_key, eulen_id, created_at)\n        VALUES\n            ($1, $2, $3, $4)\n        RETURNING\n            id as \"id!: uuid::Uuid\",\n            public_key as \"public_key!: crypto::PublicKey\",\n            eulen_id,\n            created_at as \"created_at!: time::OffsetDateTime\",\n            updated_at as \"updated_at!: time::OffsetDateTime\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: uuid::Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "public_key!: crypto::PublicKey",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "eulen_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: time::OffsetDateTime",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: time::OffsetDateTime",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "9f8a34d4c65e3e4f724eb44ed79cd69e7ee683b7e10b1e4df52414cec8ddf4d3"
+}

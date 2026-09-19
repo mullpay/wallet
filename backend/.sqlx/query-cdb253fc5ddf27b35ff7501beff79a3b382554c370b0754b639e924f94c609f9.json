@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE\n\t\t\tdeposit\n\t\tSET\n\t\t\tstatus = $2,\n\t\t\tupdated_at = $3\n        WHERE\n\t\t\tdeposit_id = $1\n        RETURNING\n            id as \"id!: uuid::Uuid\",\n            account_id  as \"account_id!: uuid::Uuid\",\n            deposit_id  as \"deposit_id!: uuid::Uuid\",\n\t\t\tstatus as \"status: DepositStatus\",\n\t\t\tdeposit_amount_in_cents as \"deposit_amount_in_cents!: u32\",\n\t\t\tpayout_amount_in_cents  as \"payout_amount_in_cents!: u32\",\n\t\t\tfee_amount_in_cents  as \"fee_amount_in_cents!: u32\",\n            created_at as \"created_at!: time::OffsetDateTime\",\n\t\t\tupdated_at as \"updated_at!: time::OffsetDateTime\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: uuid::Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "account_id!: uuid::Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "deposit_id!: uuid::Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "status: DepositStatus",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "deposit_amount_in_cents!: u32",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "payout_amount_in_cents!: u32",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "fee_amount_in_cents!: u32",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: time::OffsetDateTime",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: time::OffsetDateTime",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cdb253fc5ddf27b35ff7501beff79a3b382554c370b0754b639e924f94c609f9"
+}
