@@ -1,0 +1,278 @@
+openapi: 3.0.3
+info:
+  title: MullPay Backend
+  version: 0.1.0
+  description: Authentication and Pix deposit API. Monetary amounts are expressed in cents.
+servers:
+  - url: https://api.mullpay.com
+    description: Production server
+paths:
+  /:
+    get:
+      summary: Check whether the backend is available
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Backend is available
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+  /auth/request-challenge:
+    post:
+      summary: Request an authentication challenge
+      operationId: requestChallenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [public_key]
+              properties:
+                public_key:
+                  $ref: "#/components/schemas/PublicKey"
+      responses:
+        "200":
+          description: Challenge JWT containing public_key, nonce, and exp in its payload
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token:
+                    type: string
+                    description: Token to sign and submit for confirmation
+        default:
+          $ref: "#/components/responses/Error"
+
+  /auth/confirm-challenge:
+    post:
+      summary: Confirm the challenge and return an access token
+      operationId: confirmChallenge
+      description: Sign the SHA-256 hash of the challenge token using ECDSA secp256k1.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, signature]
+              properties:
+                token:
+                  type: string
+                  description: JWT received from /auth/request-challenge
+                signature:
+                  type: string
+                  description: Compact 64-byte signature encoded as hexadecimal
+                  pattern: "^[0-9a-fA-F]{128}$"
+      responses:
+        "200":
+          description: Authentication successful; creates the account if it does not exist
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, payload]
+                properties:
+                  token:
+                    type: string
+                    description: JWT used to authenticate requests to deposit endpoints
+                  payload:
+                    type: object
+                    required: [public_key, account_id, exp]
+                    properties:
+                      public_key:
+                        $ref: "#/components/schemas/PublicKey"
+                      account_id:
+                        type: string
+                        format: uuid
+                      exp:
+                        type: integer
+                        format: int64
+                        description: Expiration time in seconds since the Unix epoch
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /deposit:
+    post:
+      summary: Create a deposit and return the Pix copy-and-paste code
+      operationId: createDeposit
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: >-
+                Provide deposit_amount_in_cents (amount to pay) or
+                payout_amount_in_cents (amount to receive). If both are
+                provided, deposit_amount_in_cents takes precedence.
+              required: [address]
+              anyOf:
+                - required: [deposit_amount_in_cents]
+                - required: [payout_amount_in_cents]
+              properties:
+                address:
+                  type: string
+                  description: Destination address for the deposit
+                deposit_amount_in_cents:
+                  $ref: "#/components/schemas/AmountInCents"
+                payout_amount_in_cents:
+                  $ref: "#/components/schemas/AmountInCents"
+      responses:
+        "200":
+          description: Deposit created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - br_code
+                  - deposit_amount_in_cents
+                  - payout_amount_in_cents
+                  - fee_amount_in_cents
+                properties:
+                  br_code:
+                    type: string
+                    description: Pix copy-and-paste code
+                  deposit_amount_in_cents:
+                    $ref: "#/components/schemas/AmountInCents"
+                  payout_amount_in_cents:
+                    $ref: "#/components/schemas/AmountInCents"
+                  fee_amount_in_cents:
+                    $ref: "#/components/schemas/AmountInCents"
+        "400":
+          description: Deposit amount outside the limits or malformed JSON
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Insufficient limit
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/Error"
+  /deposit/limit:
+    get:
+      summary: Get the account's deposit and payout limits
+      operationId: getDepositLimit
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current limits in cents
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - max_deposit_amount_in_cents
+                  - min_deposit_amount_in_cents
+                  - max_payout_amount_in_cents
+                  - min_payout_amount_in_cents
+                properties:
+                  max_deposit_amount_in_cents:
+                    $ref: "#/components/schemas/AmountInCents"
+                  min_deposit_amount_in_cents:
+                    $ref: "#/components/schemas/AmountInCents"
+                  max_payout_amount_in_cents:
+                    $ref: "#/components/schemas/AmountInCents"
+                  min_payout_amount_in_cents:
+                    $ref: "#/components/schemas/AmountInCents"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /webhook/deposit:
+    post:
+      summary: Receive a deposit status update
+      description: >-
+        This endpoint is intended to be called only by Eulen to report deposit
+        status updates. It is not intended to be called by wallet users.
+      operationId: depositWebhook
+      security:
+        - webhookAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [qrId, payerEUID, status, pixKey]
+              properties:
+                qrId:
+                  type: string
+                  format: uuid
+                  description: Eulen deposit identifier
+                payerEUID:
+                  type: string
+                  description: Eulen payer identifier
+                status:
+                  type: string
+                  enum:
+                    - pending
+                    - under_review
+                    - approved
+                    - depix_sent
+                    - delayed
+                    - refunded
+                    - canceled
+                    - expired
+                    - error
+                    - unknown
+                    - will_refund
+                pixKey:
+                  type: string
+      responses:
+        "200":
+          description: Update processed; empty response body
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/Error"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token returned by /auth/confirm-challenge
+    webhookAuth:
+      type: http
+      scheme: bearer
+      description: Secret configured in WEBHOOK_SECRET
+  schemas:
+    PublicKey:
+      type: string
+      description: Compressed 33-byte secp256k1 public key encoded as hexadecimal
+      pattern: "^0[23][0-9a-fA-F]{64}$"
+    AmountInCents:
+      type: integer
+      format: int64
+      minimum: 0
+      maximum: 4294967295
+      description: Amount in cents
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials, or invalid signature
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: Unauthorized
+    Error:
+      description: Request error or internal error returned as plain text
+      content:
+        text/plain:
+          schema:
+            type: string

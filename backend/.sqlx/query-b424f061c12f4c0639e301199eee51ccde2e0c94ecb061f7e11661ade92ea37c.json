@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE\n            account\n        SET\n            eulen_id = $2,\n            updated_at = $3\n        WHERE\n            id = $1\n        RETURNING\n            id as \"id!: uuid::Uuid\",\n            public_key as \"public_key!: crypto::PublicKey\",\n            eulen_id,\n            created_at as \"created_at!: time::OffsetDateTime\",\n            updated_at as \"updated_at!: time::OffsetDateTime\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: uuid::Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "public_key!: crypto::PublicKey",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "eulen_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: time::OffsetDateTime",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: time::OffsetDateTime",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "b424f061c12f4c0639e301199eee51ccde2e0c94ecb061f7e11661ade92ea37c"
+}

@@ -1,0 +1,14 @@
+{
+	"020202020202020202020202020202020202020202020202020202020202020202": {
+		"name": "Bitcoin",
+		"color": "#FF6900",
+		"decimal": 8,
+		"icon": "/asset-icons/bitcoin.png"
+	},
+	"btkn1sdqgp9904d620fmgs6p9669fghzfq06hvpqmy2wg8c9xtw4qms3qpf4aty": {
+		"name": "Depix",
+		"color": "#155dfc",
+		"decimal": 8,
+		"icon": "/asset-icons/depix.png"
+	}
+}

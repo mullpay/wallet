@@ -1,0 +1,346 @@
+name: client
+
+on:
+  push:
+    paths:
+      - client/**
+      - .github/workflows/client.yaml
+    branches: ["main"]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+env:
+  CARGO_TERM_COLOR: "always"
+
+  PUBLIC_NETWORK: ${{ secrets.NETWORK }}
+  PUBLIC_API_URL: ${{ secrets.API_URL }}
+
+  RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+  RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+  RELEASE_KEYSTORE_ALIAS: ${{ secrets.RELEASE_KEYSTORE_ALIAS }}
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      - name: Build
+        shell: bash
+        run: |
+          cd client && \
+          npm ci && \
+          npm run build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: mullpay-html
+          path: client/build
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build dependencies
+        shell: bash
+        run: |
+          sudo apt update -y && \
+          sudo apt install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libgtk-3-dev \
+            openjdk-21-jdk-headless \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Build
+        shell: bash
+        run: |
+          cd client && \
+          npm ci && \
+          npm run tauri icon ./src/lib/assets/icon.png && \
+          npm run tauri build
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mullpay-appimage
+          path: client/src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+      - name: Upload Deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mullpay-deb
+          path: client/src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: error
+
+      - name: Upload Rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mullpay-rpm
+          path: client/src-tauri/target/release/bundle/rpm/*.rpm
+          if-no-files-found: error
+
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build dependencies
+        shell: bash
+        run: |
+          sudo apt update -y && \
+          sudo apt install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libgtk-3-dev \
+            openjdk-21-jdk-headless \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Android SDK
+        shell: bash
+        run: |
+          export ANDROID_HOME=/opt/android-sdk
+          export ANDROID_SDK_ROOT=/opt/android-sdk
+          export NDK_HOME=${ANDROID_HOME}/ndk/25.0.8775105
+
+          export PATH=${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin
+          export PATH=${PATH}:${ANDROID_HOME}/platform-tools
+          export PATH=${PATH}:${ANDROID_HOME}/build-tools/33.0.0
+
+          echo "ANDROID_HOME=${ANDROID_HOME}"         >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+          echo "NDK_HOME=${NDK_HOME}"                 >> "$GITHUB_ENV"
+
+          echo "${ANDROID_HOME}/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "${ANDROID_HOME}/platform-tools"           >> "$GITHUB_PATH"
+          echo "${ANDROID_HOME}/build-tools/33.0.0"       >> "$GITHUB_PATH"
+
+          mkdir -p ${ANDROID_HOME}/cmdline-tools
+          wget "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -O /tmp/out.zip
+          unzip -u /tmp/out.zip -d /tmp
+          mv /tmp/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest
+          rm -f /tmp/out.zip
+
+          yes | sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null || true
+          sdkmanager --sdk_root="${ANDROID_HOME}" --install "platform-tools" "platforms;android-33" "ndk;25.0.8775105" "build-tools;33.0.0"
+
+      - name: Build
+        shell: bash
+        run: |
+          cd client && \
+          npm ci && \
+          npm run tauri android init && \
+          npm run tauri icon ./src/lib/assets/icon.png && \
+          npm run tauri android build
+
+      - name: Apk Signer
+        shell: bash
+        run: |
+          echo "${RELEASE_KEYSTORE_BASE64}" | base64 --decode > release_keystore.jks && \
+
+          apksigner sign \
+            --ks release_keystore.jks \
+            --ks-key-alias ${RELEASE_KEYSTORE_ALIAS} \
+            --ks-pass pass:${RELEASE_KEYSTORE_PASSWORD} \
+            --out client/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk \
+            client/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk && \
+
+          jarsigner \
+            -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore release_keystore.jks \
+            -storepass "${RELEASE_KEYSTORE_PASSWORD}" \
+            -keypass "${RELEASE_KEYSTORE_PASSWORD}" \
+            client/src-tauri/gen/android/app/build/outputs/bundle/universalRelease/app-universal-release.aab \
+            ${RELEASE_KEYSTORE_ALIAS}
+
+      - name: Upload apk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mullpay-apk
+          path: client/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+          if-no-files-found: error
+
+      - name: Upload aab artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mullpay-aab
+          path: client/src-tauri/gen/android/app/build/outputs/bundle/universalRelease/app-universal-release.aab
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build client
+        shell: bash
+        run: |
+          cd client && \
+          npm ci && \
+          npm run tauri icon ./src/lib/assets/icon.png && \
+          npm run tauri build
+
+      - name: Upload Windows NSIS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mullpay-exe
+          path: client/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+      - name: Upload Windows MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mullpay-msi
+          path: client/src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - build-linux
+      - build-windows
+      - build-android
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Delete previous nightly release and tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete nightly --yes --cleanup-tag || true
+
+      - name: Download Appimage artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mullpay-appimage
+          path: release/linux
+          merge-multiple: true
+
+      - name: Download Deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mullpay-deb
+          path: release/linux
+          merge-multiple: true
+
+      - name: Download Rpm artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mullpay-rpm
+          path: release/linux
+          merge-multiple: true
+
+      - name: Download Exe artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mullpay-exe
+          path: release/windows
+          merge-multiple: true
+
+      - name: Download MSI artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mullpay-msi
+          path: release/windows
+          merge-multiple: true
+
+      - name: Download Apk artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mullpay-apk
+          path: release/android
+          merge-multiple: true
+
+      - name: Download Aab artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mullpay-aab
+          path: release/android
+          merge-multiple: true
+
+      - name: Release nightly
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          name: nightly
+          tag_name: nightly
+          files: |
+            release/linux/*.AppImage
+            release/linux/*.deb
+            release/linux/*.rpm
+            release/windows/*.exe
+            release/windows/*.msi
+            release/android/*.apk
+            release/android/*.aab
+          fail_on_unmatched_files: true
+
+  deploy-pages:
+    runs-on: ubuntu-latest
+    needs: build-web
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: mullpay-html

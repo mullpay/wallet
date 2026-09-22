@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO account\n            (id, public_key, created_at, updated_at)\n        VALUES\n            ($1, $2, $3, $3)\n        ON CONFLICT\n            (public_key)\n        DO UPDATE SET\n            public_key = EXCLUDED.public_key\n        RETURNING\n            id as \"id!: uuid::Uuid\",\n            public_key as \"public_key!: crypto::PublicKey\",\n            eulen_id,\n            created_at as \"created_at!: time::OffsetDateTime\",\n            updated_at as \"updated_at!: time::OffsetDateTime\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: uuid::Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "public_key!: crypto::PublicKey",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "eulen_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: time::OffsetDateTime",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: time::OffsetDateTime",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "dadd193945431040558ec67aafed68c045f150398ff6be285e5d145255cfa169"
+}
