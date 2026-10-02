@@ -57,7 +57,7 @@
 	});
 </script>
 
-{#snippet entry(value: Entry, sign: string)}
+{#snippet entry(value: Entry, sign: "+" | "-")}
 	{@const asset = ASSETS[value.asset]}
 	<dl class="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
 		<div class="flex flex-col gap-1.5">
@@ -69,9 +69,15 @@
 		</div>
 		<div class="flex flex-col gap-1.5">
 			<dt class="text-xs text-neutral-500 dark:text-neutral-400">Amount</dt>
-			<dd class="font-mono text-lg font-semibold break-all text-red-500">
-				{sign}{formatAmount(value.amount, value.asset)}
-			</dd>
+			{#if sign === "+"}
+				<dd class="font-mono text-lg font-semibold break-all text-green-500">
+					{sign}{formatAmount(value.amount, value.asset)}
+				</dd>
+			{:else}
+				<dd class="font-mono text-lg font-semibold break-all text-red-500">
+					{sign}{formatAmount(value.amount, value.asset)}
+				</dd>
+			{/if}
 		</div>
 	</dl>
 {/snippet}
