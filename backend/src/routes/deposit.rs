@@ -3,7 +3,7 @@ use crate::*;
 use axum::extract::*;
 use axum::routing::*;
 
-const EULEN_FEE_IN_CENTS: u32 = 99;
+const EULEN_FEE_IN_CENTS: Decimal = dec!(99);
 const INTERNAL_FEE_PERCENT: Decimal = dec!(2.25);
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -47,19 +47,27 @@ async fn deposit_route(app: State<app::AppState>, auth: Extension<auth::Authenti
 	let account = db::account::get_account(&app.pool, &auth.account_id).await?;
 
 	let (deposit_amount_in_cents, payout_amount_in_cents, fee_amount_in_cents) = match &payload.amount {
-		DepositAmount::DepositAmountInCents { deposit_amount_in_cents: value } => {
+		DepositAmount::DepositAmountInCents { deposit_amount_in_cents } => {
 			let multiplier = INTERNAL_FEE_PERCENT / Decimal::ONE_HUNDRED;
-			let fee: u32 = (Decimal::from(*value) * multiplier).ceil().try_into().unwrap();
-			let total_fee = fee + EULEN_FEE_IN_CENTS;
+			let fee_amount_in_cents: u32 = ((Decimal::from(*deposit_amount_in_cents) * multiplier) + EULEN_FEE_IN_CENTS)
+				.ceil()
+				.try_into()
+				.map_err(|_| error::Error::InsufficientLimit)?;
 
-			(*value, value.saturating_sub(total_fee), total_fee)
+			let payout_amount_in_cents = deposit_amount_in_cents.saturating_sub(fee_amount_in_cents);
+
+			(*deposit_amount_in_cents, payout_amount_in_cents, fee_amount_in_cents)
 		}
-		DepositAmount::PayoutAmountInCents { payout_amount_in_cents: value } => {
-			let multiplier = INTERNAL_FEE_PERCENT / Decimal::ONE_HUNDRED;
-			let fee: u32 = (Decimal::from(*value) * multiplier).ceil().try_into().unwrap();
-			let total_fee = fee + EULEN_FEE_IN_CENTS;
+		DepositAmount::PayoutAmountInCents { payout_amount_in_cents } => {
+			let divisor = Decimal::ONE - INTERNAL_FEE_PERCENT / Decimal::ONE_HUNDRED;
+			let deposit_amount_in_cents: u32 = ((Decimal::from(*payout_amount_in_cents) + EULEN_FEE_IN_CENTS) / divisor)
+				.ceil()
+				.try_into()
+				.map_err(|_| error::Error::InsufficientLimit)?;
 
-			(value.saturating_add(total_fee), *value, total_fee)
+			let fee_amount_in_cents = deposit_amount_in_cents.saturating_sub(*payout_amount_in_cents);
+
+			(deposit_amount_in_cents, *payout_amount_in_cents, fee_amount_in_cents)
 		}
 	};
 
@@ -126,10 +134,18 @@ async fn calc_limit(app: &app::AppState, eulen_id: Option<&str>) -> error::Resul
 		}
 	};
 
-	let multiplier = Decimal::ONE + INTERNAL_FEE_PERCENT / Decimal::ONE_HUNDRED;
+	let multiplier = Decimal::ONE - INTERNAL_FEE_PERCENT / Decimal::ONE_HUNDRED;
 
-	let max_payout_amount_in_cents: u32 = (Decimal::from(max_deposit_amount_in_cents.saturating_sub(EULEN_FEE_IN_CENTS)) / multiplier).floor().try_into().unwrap();
-	let min_payout_amount_in_cents: u32 = (Decimal::from(min_deposit_amount_in_cents.saturating_sub(EULEN_FEE_IN_CENTS)) / multiplier).floor().try_into().unwrap();
+	let max_payout_amount_in_cents: u32 = (Decimal::from(max_deposit_amount_in_cents) * multiplier - EULEN_FEE_IN_CENTS)
+		.max(Decimal::ZERO)
+		.floor()
+		.try_into()
+		.unwrap();
+	let min_payout_amount_in_cents: u32 = (Decimal::from(min_deposit_amount_in_cents) * multiplier - EULEN_FEE_IN_CENTS)
+		.max(Decimal::ZERO)
+		.floor()
+		.try_into()
+		.unwrap();
 
 	Ok((min_deposit_amount_in_cents, max_deposit_amount_in_cents, min_payout_amount_in_cents, max_payout_amount_in_cents))
 }
