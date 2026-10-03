@@ -40,7 +40,7 @@
 
 			switch (addressType) {
 				case "LIGHTNING": {
-					await wallet!.payLightningInvoice(address, 100n, isZeroAmountInvoice ? BigInt(amount) : undefined);
+					await wallet!.payLightningInvoice(address, 250n, isZeroAmountInvoice ? BigInt(amount) : undefined);
 					break;
 				}
 				case "SPARK": {
